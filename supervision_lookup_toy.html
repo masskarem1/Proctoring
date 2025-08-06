@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Supervision Lookup - MUST</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 900px; margin: 30px auto; background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .header { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 24px 16px 16px 16px; border-radius: 8px; text-align: center; margin-bottom: 24px; }
+        .header h1 { margin: 0; font-size: 26px; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .header p { margin: 8px 0 0 0; font-size: 16px; color: #e0e0e0; }
+        .search-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; background: #f0f0f0; color: #666; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; }
+        .tab-btn.active { background: #1e3c72; color: white; }
+        .tab-btn:hover:not(.active) { background: #e0e0e0; }
+        .search-box { margin: 24px 0 16px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .search-box input[type="text"] { flex: 1 1 250px; padding: 16px; border: 1.5px solid #ced4da; border-radius: 6px; font-size: 18px; }
+        .search-box button { padding: 16px 28px; background: #1e3c72; color: #fff; border: none; border-radius: 6px; font-size: 18px; cursor: pointer; font-weight: bold; letter-spacing: 1px; }
+        .search-box button:active, .search-box button:focus { outline: 2px solid #2a5298; }
+        .search-box button:hover { background: #2a5298; }
+        .no-results { text-align: center; color: #888; margin: 32px 0; font-size: 18px; }
+        .supervision-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 18px; }
+        .supervision-table { width: 100%; min-width: 500px; border-collapse: collapse; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+        .supervision-table th, .supervision-table td { border: 1px solid #ddd; padding: 14px 10px; text-align: center; font-size: 16px; }
+        .supervision-table th { background: #3498db; color: #fff; font-weight: bold; }
+        .supervision-table tr:nth-child(even) { background: #f9f9f9; }
+        .supervision-table tr:nth-child(odd) { background: #fff; }
+        .result-header { margin-top: 32px; margin-bottom: 8px; font-size: 22px; color: #2c3e50; font-weight: bold; }
+        .mobile-card { display: block; }
+        .mobile-cards { display: none; }
+        .desktop-table { display: block; }
+        @media (max-width: 700px) {
+            .container { padding: 4px; }
+            .header { padding: 10px 2px 6px 2px; }
+            .header h1 { font-size: 18px; }
+            .search-box { flex-direction: column; gap: 8px; }
+            .search-box input[type="text"] {
+                font-size: 16px;
+                padding: 12px;
+                width: 100%;
+                flex: unset;
+                box-sizing: border-box;
+            }
+            .search-box button { font-size: 16px; padding: 12px 18px; }
+            .supervision-table-wrapper { margin-top: 10px; }
+            .supervision-table th, .supervision-table td { padding: 8px 4px; font-size: 13px; }
+            .result-header { font-size: 16px; }
+            .supervision-table { min-width: 350px; }
+            .mobile-card { display: block; background: #f9f9f9; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin: 12px 0; padding: 12px 10px; }
+            .mobile-card .card-title { font-weight: bold; color: #2a5298; font-size: 15px; margin-bottom: 6px; }
+            .mobile-card .card-row { font-size: 14px; margin-bottom: 3px; }
+            .mobile-cards { display: block; }
+            .desktop-table { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Misr University for Science and Technology</h1>
+            <p>Faculty of Engineering &mdash; SUMMER 2025 Final Exam Supervision Lookup</p>
+        </div>
+        
+        <!-- Search mode tabs -->
+        <div class="search-tabs">
+            <button class="tab-btn active" data-tab="proctor">Search by Proctor</button>
+            <button class="tab-btn" data-tab="date">Search by Date</button>
+        </div>
+
+        <!-- Proctor search -->
+        <form class="search-box" id="searchForm" autocomplete="off" data-search="proctor">
+            <input type="text" id="searchInput" placeholder="Search by name or email...">
+            <button id="searchButton" type="submit">Search</button>
+        </form>
+
+        <!-- Date search -->
+        <form class="search-box" id="dateSearchForm" autocomplete="off" data-search="date" style="display:none;">
+            <input type="date" id="dateInput" placeholder="Select date...">
+            <button id="dateSearchButton" type="submit">Search Date</button>
+        </form>
+
+        <div id="results"></div>
+    </div>
+    <script>
+        // --- SUPERVISION DATA WILL BE INJECTED HERE BY PYTHON ---
+        const supervisions = [
+  {
+    name: "Asso. Prof. Dr. Ragab Abdullah",
+    email: "ragab.mahmoud@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Abdulnabi Abdulrahman",
+    email: "abdulnaby.mohamed@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Ahmed  Elmohamady",
+    email: "Ahmed.Almohamady@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "324 R PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Ahmed Karim",
+    email: "ahmed.karim@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Dr. Ahmed Ramadan Adly",
+    email: "ahmed.adly@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Dr. Ahmed Sabry Ameen",
+    email: "Ahmed.sabry@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Alaa Zakaria",
+    email: "alaaeldin.khafagy@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 16, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Atef Ragab",
+    email: "atef.ragb@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Dr. Aya Nashat",
+    email: "aya.nashat@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Eman Khatab",
+    email: "eman.khatab@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL101-322 TH SS" },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Ghada Kholief",
+    email: "ghada.abdelfatah@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL201-207 R SS" },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Kamal Gomaa",
+    email: "kamal.gomaa@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H1 LB PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Lina Bassiony",
+    email: "lina.bassiouny@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ARAB101-420 TH SS " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Maha Abobakr",
+    email: "maha.ibrahim@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Mahmoud sakr",
+    email: "mahmoud.sakr@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Mohamed Ahmed Mustafa",
+    email: "mohammed.mostafa@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN101-421 TH SS" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Mohamed Omar",
+    email: "mohamed.omar@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Mona Samy Ghareeb bondok",
+    email: "Mona.bondok@must.edu.eg ",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "515 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+    ]
+  },
+  {
+    name: "Dr. Noha Fathi",
+    email: "Noha.fathi@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Rabab Ahmed Ramadan",
+    email: "rabab.almorsy@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. Rabab Hussein",
+    email: "rabab.ibrahim@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Ramy abdelrahem",
+    email: "ramy.mohamed@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H4 LB PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Rasha Hassan",
+    email: "rasha.abozeaid@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Soad Moftah",
+    email: "soad.fergany@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Tarek Mohamed abd elbadia ",
+    email: "Tarek.abdelbadia@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Wael Bahlol",
+    email: "Wael.bahlol@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. Yassmin Kotb",
+    email: "Yasmin.kotb@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H2 LB PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. ahmed shaheen",
+    email: "ahmed.shaheen@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL102-420 TH SS " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr. hala emad",
+    email: "hala.fouad@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. mohamed abdelaziz",
+    email: "Mohamed.alkozaa@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "417 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. mostafa mahdy",
+    email: "mostafa.senosy@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr. osama abdelrasheed",
+    email: "osama.mansour@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H3 LB PH " },
+    ]
+  },
+  {
+    name: "Dr.Adel Abdein",
+    email: "adel.abdin@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr.Ashraf samy ",
+    email: "ashraf.samy@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "417 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Dr.Hesham abdelhakim ",
+    email: "hesham.fahem@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Dr.Mamdouh Goda",
+    email: "mamdouh.gouda@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 16, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Abdallah Mohamed Abdelfattah Elbana",
+    email: "abdullah.elbanna@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Abdelrahman Hesham",
+    email: "Abdelrahman.hesham@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Abdelrazek",
+    email: "Ahmed.alsaid@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "417 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Hamdi",
+    email: "Ahmad.hamdi@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Hesham Zaki",
+    email: "Ahmed.hesham@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Mohamed Mamdouh",
+    email: "ahmed.mamdouh@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Mostafa abdeltawab ",
+    email: "ahmed.moustafa@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Saeed",
+    email: "ahmed.shehata@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "515 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Tarek Ibrahim",
+    email: "ahmed.moawad@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN101-421 TH SS" },
+      { date: "Saturday, August 09, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ARAB101-420 TH SS " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Ahmed Tarek Mohamed",
+    email: "Ahmed.ebrahim@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H4 LB PH " },
+    ]
+  },
+  {
+    name: "Eng. Alaa Abdelsalam",
+    email: "alaa.abdelsalam@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL201-207 R SS" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "316 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Amir Girges Moawwad",
+    email: "amir.gerges@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H1 LB PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Aya Abdel Hameed Ali Al-Suwaidi  ",
+    email: "aya.alsweedy@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "316 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Aya Abdelhamed Ahmed Mohamed",
+    email: "aya.hameed@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Aya Ahmed Ghamry",
+    email: "aya.ghamry@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Bilal Mohamed Fetouh Mohamed",
+    email: "belal.elhlwany@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Farouk emam farouk mohammed waked",
+    email: "farouk.waked@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Fatma saeed kamal",
+    email: "fatma.saeed@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H2 LB PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Gehad Atiya ",
+    email: "gehad.atiya@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Ghada Mohamed Abdelrazek",
+    email: "ghada.osman@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL101-322 TH SS" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+    ]
+  },
+  {
+    name: "Eng. Hagar Khaled Mohamed",
+    email: "hager.mohamed@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+    ]
+  },
+  {
+    name: "Eng. Hasan Saeed",
+    email: "hassan.albattra@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL099-206 R SS " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Heba Mohamed Abdelsalam",
+    email: "heba.mohamed@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Hend Shaban",
+    email: "hend.hamed@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H4 LB PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Hossam eldeen mohamed elashry ",
+    email: "hossam.elashry@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Islam Ibrahim Hamed",
+    email: "eslam.hamed@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Islam Mohamed Hegab ",
+    email: "islam.hegab@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "417 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Islam Wagih Hussein Safwat Abdellatif ",
+    email: "Islam.hussein@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Karim Mohamed Mohamed Yousef ",
+    email: "Karim.yousef@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Karim Zakaria Amin Rashid",
+    email: "Karim.Rashid@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Khaled Abdelnaser",
+    email: "khaled.elshamndy@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Khaled Zaki",
+    email: "khaled.hagag@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Magdy Ahmed",
+    email: "magdy.almahdy@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Mahinaz Atfy Moawad",
+    email: "mahinaz.mashhour@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H1 LB PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mahmoud Yahia Ibrahim",
+    email: "mahmoud.yehia@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL102-420 TH SS " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Mina Zaraei",
+    email: "mina.zare@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Moataz Ahmed Ali",
+    email: "motaz.ahmed@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Abd Al Aleem",
+    email: "moahmed.abdelaleem@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 16, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 2", time: "12:00–2:00", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Ahmed Abdelmoatamed",
+    email: "Mohamed.moatmed@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Ahmed Mohamed Ibrahim ",
+    email: "mohamed.ebrahim@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–1:30", location: "D.H1 LB PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Ayman",
+    email: "Mohamed.elsalaam@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Morgan",
+    email: "mohamed.morgan@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Rady Ahmed Amen",
+    email: "mohamed.rady@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL101-322 TH SS" },
+      { date: "Saturday, August 09, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN101-421 TH SS" },
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+      { date: "Thursday, August 21, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Ramadan ",
+    email: "Mohamed.moase@must.edu.eg",
+    supervisions: [
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "D.H3 LB PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mohamed Rizk",
+    email: "mohamed.rizk@must.edu.eg",
+    supervisions: [
+      { date: "Thursday, August 14, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "D.H2 LB PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mohamed hisham",
+    email: "mohamed.hisham@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 16, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Saturday, August 16, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Mostafa Ibrahim Elgendy",
+    email: "mostafa.elgendy@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "515 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Nesma Abd el aziz",
+    email: "nesma.abdelaziz@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Nourhan Yehia Mohamed",
+    email: "nourhan.yehia@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Sunday, August 17, 2025", slot: "Slot 2", time: "12:00–2:00", location: "417 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Ola Adel",
+    email: "ola.adel@must.edu.eg",
+    supervisions: [
+      { date: "Saturday, August 09, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ENGL201-207 R SS" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1", time: "9:30–11:30", location: "315 TH PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Monday, August 18, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Omar Ashraf Abdelmawgoud ",
+    email: "omar.zakaria@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 3", time: "2:30–4:30", location: "ACT-420 TH SS " },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 2", time: "12:00–2:00", location: "ON CALL" },
+      { date: "Wednesday, August 20, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Omar Mohamed Elsayd Ragab",
+    email: "Omar.elsayd@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "417 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 3", time: "2:30–4:30", location: "324 R PH " },
+      { date: "Thursday, August 14, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+      { date: "Sunday, August 17, 2025", slot: "Slot 1", time: "9:30–11:30", location: "D.H2 LB PH " },
+    ]
+  },
+  {
+    name: "Eng. Sara Mohamed Gamal",
+    email: "sara.gamal@must.edu.eg",
+    supervisions: [
+      { date: "Monday, August 11, 2025", slot: "Slot 3", time: "2:30–4:30", location: "316 TH PH " },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 1", time: "9:30–11:30", location: "316 TH PH " },
+      { date: "Thursday, August 21, 2025", slot: "Slot 1", time: "9:30–11:30", location: "ON CALL" },
+    ]
+  },
+  {
+    name: "Eng. Waleed Elbadry",
+    email: "Waleed.elbadry@must.edu.eg",
+    supervisions: [
+      { date: "Tuesday, August 19, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Tuesday, August 19, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+  {
+    name: "Eng. Yassmin hassanin amin ",
+    email: "Yassmin.hassanin@must.edu.eg",
+    supervisions: [
+      { date: "Sunday, August 10, 2025", slot: "Slot 2", time: "12:00–2:00", location: "HUMN102-218 TH SS" },
+      { date: "Tuesday, August 12, 2025", slot: "Slot 2", time: "12:00–2:00", location: "315 TH PH " },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 1,Slot 2", time: "9:30–12:30", location: "ON CALL" },
+      { date: "Wednesday, August 13, 2025", slot: "Slot 3", time: "2:30–4:30", location: "315 TH PH " },
+    ]
+  },
+];
+
+        function renderResults(matches) {
+            const resultsDiv = document.getElementById('results');
+            let html = '';
+            const PAGE_SIZE = 10;
+            // Track current page for show more
+            if (!renderResults.pageIndex || renderResults.lastMatches !== matches) {
+                renderResults.pageIndex = 1;
+                renderResults.lastMatches = matches;
+            }
+            const pageIndex = renderResults.pageIndex;
+            const total = matches.length;
+            if (!total) {
+                html = '<div class="no-results">No supervisions found for your search.</div>';
+                resultsDiv.innerHTML = html;
+                return;
+            }
+            function slotSortValue(slot) {
+                slot = slot.trim();
+                if (/^Slot\s*1$/i.test(slot)) return 0;
+                if (/1/.test(slot)) return 1;
+                const m = /Slot\s*(\d+)/i.exec(slot);
+                return m ? parseInt(m[1], 10) : 99;
+            }
+            const start = 0;
+            const end = Math.min(pageIndex * PAGE_SIZE, total);
+            for (let idx = start; idx < end; idx++) {
+                const proctor = matches[idx];
+                const sortedSupervisions = [...proctor.supervisions].sort((a, b) => {
+                    const da = new Date(a.date);
+                    const db = new Date(b.date);
+                    if (da < db) return -1;
+                    if (da > db) return 1;
+                    return slotSortValue(a.slot) - slotSortValue(b.slot);
+                });
+                const header = `<div class="result-header">${proctor.name} <span style="font-size:14px; color:#888;">(${proctor.email})</span></div>`;
+                let table = `<div class='desktop-table'><div class='supervision-table-wrapper'><table class="supervision-table">
+<thead><tr><th>#</th><th>Date</th><th>Slot</th><th>Time</th><th>Location</th></tr></thead><tbody>`;
+                sortedSupervisions.forEach((s, i) => {
+                    table += `<tr><td>${i+1}</td><td>${s.date}</td><td>${s.slot}</td><td>${s.time}</td><td>${s.location}</td></tr>`;
+                });
+                table += '</tbody></table></div></div>';
+                let mobileCards = `<div class='mobile-cards'>`;
+                sortedSupervisions.forEach((s, i) => {
+                    mobileCards += `<div class='mobile-card' style='border: 1.5px solid #ddd; border-radius: 10px; box-shadow: 0 2px 8px rgba(30,60,114,0.10); margin-bottom: 16px; background: #fff;'>
+` +
+                        `<div class='card-title' style='font-weight: bold; color: #2a5298; font-size: 15px; margin-bottom: 0; padding: 10px 10px 0 10px;'>Supervision #${i+1}</div>
+` +
+                        `<div style='height: 3px; background: #2a5298; margin: 8px 0 10px 0; border-radius: 2px; width: 96%; margin-left: 2%;'></div>` +
+                        `<div class='card-row' style='font-size:14px; margin-bottom:3px; padding: 0 10px 10px 10px;'><span style='font-size:18px; margin-right:4px;'>📅</span> <b>Date:</b> ${s.date}</div>
+` +
+                        `<div class='card-row' style='font-size:14px; margin-bottom:3px; padding: 0 10px 10px 10px;'><span style='font-size:18px; margin-right:4px;'>🎯</span> <b>Slot:</b> ${s.slot}</div>
+` +
+                        `<div class='card-row' style='font-size:14px; margin-bottom:3px; padding: 0 10px 10px 10px;'><span style='font-size:18px; margin-right:4px;'>⏰</span> <b>Time:</b> ${s.time}</div>
+` +
+                        `<div class='card-row' style='font-size:14px; margin-bottom:3px; padding: 0 10px 10px 10px;'><span style='font-size:18px; margin-right:4px;'>📍</span> <b>Location:</b> ${s.location}</div>
+` +
+                        `</div>`;
+                });
+                mobileCards += `</div>`;
+                html += header + table + mobileCards;
+            }
+            // Show more button if needed
+            if (end < total) {
+                html += `<div style='text-align:center; margin: 24px 0;'>` +
+                    `<button id='showMoreBtn' style='padding: 12px 32px; font-size: 18px; background: #2a5298; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;'>Show more (${total-end} more)</button>` +
+                    `</div>`;
+            }
+            resultsDiv.innerHTML = html;
+            // Attach event for show more
+            if (end < total) {
+                document.getElementById('showMoreBtn').onclick = function() {
+                    renderResults.pageIndex = pageIndex + 1;
+                    renderResults(matches);
+                };
+            }
+        }
+
+
+        // Debounce utility
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        let lastSearchTerm = '';
+        let lastResultsLength = -1;
+        function searchSupervisions() {
+            const term = document.getElementById('searchInput').value.trim().toLowerCase();
+            let matches;
+            if (!term) {
+                matches = supervisions;
+            } else {
+                matches = supervisions.filter(p =>
+                    (p.name && p.name.toLowerCase().includes(term)) ||
+                    (p.email && p.email.toLowerCase().includes(term))
+                );
+            }
+            // Only update if results or term changed
+            if (term !== lastSearchTerm || matches.length !== lastResultsLength) {
+                renderResults(matches);
+                lastSearchTerm = term;
+                lastResultsLength = matches.length;
+            }
+        }
+
+        const debouncedSearch = debounce(searchSupervisions, 200);
+        document.getElementById('searchInput').addEventListener('input', debouncedSearch);
+        document.getElementById('searchButton').addEventListener('click', searchSupervisions);
+        document.getElementById('searchForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            searchSupervisions();
+            document.getElementById('searchInput').blur();
+        });
+        // Show all on load
+        renderResults(supervisions);
+
+        // Tab switching logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active state
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Show/hide appropriate search form
+                if (btn.dataset.tab === 'proctor') {
+                    document.querySelector('[data-search="proctor"]').style.display = 'flex';
+                    document.querySelector('[data-search="date"]').style.display = 'none';
+                    renderResults(supervisions); // Show all results
+                } else {
+                    document.querySelector('[data-search="proctor"]').style.display = 'none';
+                    document.querySelector('[data-search="date"]').style.display = 'flex';
+                    renderDateResults([]); // Clear results
+                }
+            });
+        });
+
+        // Date search rendering
+        function renderDateResults(supervisions) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            if (!supervisions.length) {
+                resultsDiv.innerHTML = '<div class="no-results">No supervisions found for the selected date.</div>';
+                return;
+            }
+
+            // Group by slot+time, then by location
+            const slotTimeGroups = {};
+            supervisions.forEach(s => {
+                const slotTimeKey = `${s.slot}||${s.time}`;
+                if (!slotTimeGroups[slotTimeKey]) {
+                    slotTimeGroups[slotTimeKey] = [];
+                }
+                slotTimeGroups[slotTimeKey].push(s);
+            });
+
+            // Sort slot+time keys (Slot 1, Slot 2, ...), then by time
+            const sortedSlotTimeKeys = Object.keys(slotTimeGroups).sort((a, b) => {
+                const [slotA, timeA] = a.split('||');
+                const [slotB, timeB] = b.split('||');
+                // Sort by slot number
+                const numA = parseInt(slotA.match(/\d+/)) || 99;
+                const numB = parseInt(slotB.match(/\d+/)) || 99;
+                if (numA !== numB) return numA - numB;
+                // If same slot, sort by time
+                return timeA.localeCompare(timeB);
+            });
+
+            // Helper function to get title rank (Dr. > Eng. > others)
+            function getTitleRank(name) {
+                if (name.toLowerCase().startsWith('dr.')) return 0;
+                if (name.toLowerCase().startsWith('eng.')) return 1;
+                return 2;
+            }
+
+            // For each slot+time group, group by location
+            sortedSlotTimeKeys.forEach(slotTimeKey => {
+                const [slot, time] = slotTimeKey.split('||');
+                const group = slotTimeGroups[slotTimeKey];
+                // Group by location
+                const locationGroups = {};
+                group.forEach(s => {
+                    if (!locationGroups[s.location]) {
+                        locationGroups[s.location] = [];
+                    }
+                    locationGroups[s.location].push(s);
+                });
+                const sortedLocations = Object.keys(locationGroups).sort((a, b) => a.localeCompare(b));
+
+                sortedLocations.forEach(location => {
+                    const sortedSupervisions = locationGroups[location].sort((a, b) => {
+                        // First sort by title rank
+                        const rankDiff = getTitleRank(a.proctorName) - getTitleRank(b.proctorName);
+                        if (rankDiff !== 0) return rankDiff;
+                        // If same title, sort alphabetically
+                        return a.proctorName.localeCompare(b.proctorName);
+                    });
+
+                    const header = `<div class="result-header">🗓️ ${slot} | ⏰ ${time} | 🏫 ${location}</div>`;
+                    // Desktop table
+                    let table = `<div class='desktop-table'><div class='supervision-table-wrapper'><table class="supervision-table">
+                        <thead><tr><th>#</th><th>Proctor</th><th>Email</th></tr></thead><tbody>`;
+                    sortedSupervisions.forEach((s, i) => {
+                        table += `<tr>
+                            <td>${i+1}</td>
+                            <td style="font-weight: ${getTitleRank(s.proctorName) === 0 ? 'bold' : 'normal'}">${s.proctorName}</td>
+                            <td>${s.proctorEmail}</td>
+                        </tr>`;
+                    });
+                    table += '</tbody></table></div></div>';
+
+                    // Mobile card: card title is slot, time, location; contents are proctors (sorted by seniority)
+                    let mobileCards = `<div class='mobile-cards'>`;
+                    mobileCards += `<div class='mobile-card' style='border: 1.5px solid #ddd; border-radius: 10px; box-shadow: 0 2px 8px rgba(30,60,114,0.10); margin-bottom: 16px; background: #fff;'>
+` +
+                        `<div class='card-title' style='font-weight: bold; color: #2a5298; font-size: 15px; margin-bottom: 0; padding: 10px 10px 0 10px;'>Proctors</div>
+` +
+                        `<div style='height: 3px; background: #2a5298; margin: 8px 0 10px 0; border-radius: 2px; width: 96%; margin-left: 2%;'></div>`;
+                    // List proctors inside the card
+                    sortedSupervisions.forEach((s, i) => {
+                        const isSenior = getTitleRank(s.proctorName) === 0;
+                        mobileCards += `<div class='card-row' style='font-size:14px; margin-bottom:3px; padding: 0 10px 2px 10px; display: flex; align-items: center;'>` +
+                            `<span style='font-size:18px; margin-right:4px;'>👤</span> <b${isSenior ? " style='color:#1e3c72;'" : ''}>${s.proctorName}</b>` +
+                            `${isSenior ? "<span style='background: #1e3c72; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-left:8px;'>Senior</span>" : ''}` +
+                            `</div>`;
+                        mobileCards += `<div class='card-row' style='font-size:13px; color:#888; margin-bottom:8px; padding: 0 10px 8px 32px;'>${s.proctorEmail}</div>`;
+                    });
+                    mobileCards += `</div>`;
+
+                    resultsDiv.innerHTML += header + table + mobileCards;
+                });
+            });
+        }
+
+        // Handle date search
+        document.getElementById('dateSearchForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const dateInput = document.getElementById('dateInput').value;
+            if (!dateInput) {
+                renderDateResults([]);
+                return;
+            }
+
+            // Convert selected date to same format as supervision dates for comparison
+            const selectedDate = new Date(dateInput).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            // Find all supervisions for the selected date
+            const dateSupervisions = [];
+            supervisions.forEach(proctor => {
+                proctor.supervisions.forEach(s => {
+                    // Normalize dates for comparison by creating Date objects
+                    const supervisionDate = new Date(s.date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                    if (supervisionDate === selectedDate) {
+                        dateSupervisions.push({
+                            ...s,
+                            proctorName: proctor.name,
+                            proctorEmail: proctor.email
+                        });
+                    }
+                });
+            });
+
+            renderDateResults(dateSupervisions);
+        });
+    </script>
+</body>
+</html>
